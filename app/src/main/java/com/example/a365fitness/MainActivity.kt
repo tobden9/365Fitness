@@ -19,37 +19,32 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            _365FitnessTheme{
-                WellnessApp()
-            }
-        }
-    }
-}
+            _365FitnessTheme {
+                val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
+                var selectedTab by remember { mutableStateOf(0) }
 
-@Composable
-fun WellnessApp() {
-    val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
-    var selectedTab by remember { mutableStateOf(0) }
-
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { index, title ->
-                    NavigationBarItem(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        label = { Text(title) },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = title) }
-                    )
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar {
+                            tabs.forEachIndexed { index, title ->
+                                NavigationBarItem(
+                                    selected = selectedTab == index,
+                                    onClick = { selectedTab = index },
+                                    label = { Text(title) },
+                                    icon = { Icon(Icons.Default.Favorite, contentDescription = title) }
+                                )
+                            }
+                        }
+                    }
+                ) { innerPadding ->
+                    when (tabs[selectedTab]) {
+                        "Dashboard" -> DashboardScreen(Modifier.padding(innerPadding))
+                        "Fitness" -> FitnessScreen(Modifier.padding(innerPadding))
+                        "Nutrition" -> NutritionScreen(Modifier.padding(innerPadding))
+                        "Mindfulness" -> MindfulnessScreen(Modifier.padding(innerPadding))
+                    }
                 }
             }
-        }
-    ) { innerPadding ->
-        when (tabs[selectedTab]) {
-            "Dashboard" -> DashboardScreen(Modifier.padding(innerPadding))
-            "Fitness" -> FitnessScreen(Modifier.padding(innerPadding))
-            "Nutrition" -> NutritionScreen(Modifier.padding(innerPadding))
-            "Mindfulness" -> MindfulnessScreen(Modifier.padding(innerPadding))
         }
     }
 }
