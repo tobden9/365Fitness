@@ -69,22 +69,145 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
     }
 }
 
+// Data class to represent a workout
+data class Workout(
+    val exercise: String,
+    val duration: String,
+    val intensity: String
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FitnessScreen(modifier: Modifier = Modifier) {
+    var workouts by remember { mutableStateOf(listOf(
+        Workout("Running", "30 mins", "Moderate")
+    )) }
+
+    var showAddWorkoutDialog by remember { mutableStateOf(false) }
+    var newExercise by remember { mutableStateOf("") }
+    var newDuration by remember { mutableStateOf("") }
+    var newIntensity by remember { mutableStateOf("Moderate") }
+
     Column(modifier.padding(16.dp)) {
         Text("Workout Log", style = MaterialTheme.typography.headlineSmall)
-        Card(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-            Column(Modifier.padding(12.dp)) {
-                Text("Exercise: Running")
-                Text("Duration: 30 mins")
-                Text("Intensity: Moderate")
+
+        // Display workout list
+        LazyColumn {
+            items(workouts) { workout ->
+                Card(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("Exercise: ${workout.exercise}")
+                        Text("Duration: ${workout.duration}")
+                        Text("Intensity: ${workout.intensity}")
+                    }
+                }
             }
         }
-        Button(onClick = { /* Add new workout */ }) {
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Add workout button
+        Button(
+            onClick = { showAddWorkoutDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text("Add New Workout")
         }
     }
+
+    // Add Workout Dialog
+    if (showAddWorkoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddWorkoutDialog = false },
+            title = { Text("Add New Workout") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newExercise,
+                        onValueChange = { newExercise = it },
+                        label = { Text("Exercise") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newDuration,
+                        onValueChange = { newDuration = it },
+                        label = { Text("Duration (e.g., 30 mins)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    var expanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = newIntensity,
+                            onValueChange = {},
+                            label = { Text("Intensity") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            readOnly = true
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            listOf("Light", "Moderate", "High").forEach { intensity ->
+                                DropdownMenuItem(
+                                    text = { Text(intensity) },
+                                    onClick = {
+                                        newIntensity = intensity
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newExercise.isNotBlank() && newDuration.isNotBlank()) {
+                            val newWorkout = Workout(newExercise, newDuration, newIntensity)
+                            workouts = workouts + newWorkout
+                            newExercise = ""
+                            newDuration = ""
+                            newIntensity = "Moderate"
+                            showAddWorkoutDialog = false
+                        }
+                    }
+                ) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddWorkoutDialog = false
+                        newExercise = ""
+                        newDuration = ""
+                        newIntensity = "Moderate"
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
+
 
 @Composable
 fun NutritionScreen(modifier: Modifier = Modifier) {
