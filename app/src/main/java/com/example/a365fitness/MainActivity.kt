@@ -247,20 +247,158 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun NutritionScreen(modifier: Modifier = Modifier) {
-    var meal by remember { mutableStateOf("") }
-    Column(modifier.padding(16.dp)) {
-        Text("Log Your Meal", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(
-            value = meal,
-            onValueChange = { meal = it },
-            label = { Text("Add a meal...") },
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+    var meals by remember {
+        mutableStateOf(
+            listOf(
+                Meal("Breakfast", "Oats with fruits", "300 cal"),
+                Meal("Lunch", "Salad with chicken", "450 cal"),
+                Meal("Dinner", "Grilled fish with vegetables", "500 cal")
+            )
         )
+    }
+
+    var showAddMealDialog by remember { mutableStateOf(false) }
+    var newMealType by remember { mutableStateOf("") }
+    var newMealDescription by remember { mutableStateOf("") }
+    var newCalories by remember { mutableStateOf("") }
+
+    // Function to delete a meal
+    val deleteMeal: (Meal) -> Unit = { mealToDelete ->
+        meals = meals.filter { it != mealToDelete }
+    }
+
+    Column(modifier.padding(16.dp)) {
+        Text("Meal Log", style = MaterialTheme.typography.headlineSmall)
+
+        // Display meal list with delete buttons
         LazyColumn {
-            items(listOf("Breakfast - Oats", "Lunch - Salad", "Dinner - Chicken")) { item ->
-                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    Text(item, Modifier.padding(8.dp))
+            items(
+                items = meals,
+                key = { meal -> "${meal.mealType}-${meal.description}-${meal.calories}" }
+            ) { meal ->
+                MealItem(
+                    meal = meal,
+                    onDelete = { deleteMeal(meal) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Add meal button
+        Button(
+            onClick = { showAddMealDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Add New Meal")
+        }
+    }
+
+    // Add Meal Dialog
+    if (showAddMealDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddMealDialog = false },
+            title = { Text("Add New Meal") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newMealType,
+                        onValueChange = { newMealType = it },
+                        label = { Text("Meal Type (e.g., Breakfast, Lunch)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newMealDescription,
+                        onValueChange = { newMealDescription = it },
+                        label = { Text("Meal Description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newCalories,
+                        onValueChange = { newCalories = it },
+                        label = { Text("Calories") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newMealType.isNotBlank() && newMealDescription.isNotBlank() && newCalories.isNotBlank()) {
+                            val newMeal = Meal(newMealType, newMealDescription, newCalories)
+                            meals = meals + newMeal
+                            newMealType = ""
+                            newMealDescription = ""
+                            newCalories = ""
+                            showAddMealDialog = false
+                        }
+                    }
+                ) {
+                    Text("Add")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAddMealDialog = false
+                        newMealType = ""
+                        newMealDescription = ""
+                        newCalories = ""
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+// Data class for meals
+data class Meal(
+    val mealType: String,
+    val description: String,
+    val calories: String
+)
+
+// Simple meal item with delete button
+@Composable
+fun MealItem(
+    meal: Meal,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(all = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = "Meal: ${meal.mealType}", style = MaterialTheme.typography.bodyLarge)
+                Text(text = "Description: ${meal.description}")
+                Text(text = "Calories: ${meal.calories}")
+            }
+
+            // Delete button
+            IconButton(
+                onClick = onDelete
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete Meal",
+                    tint = Color.Red
+                )
             }
         }
     }
