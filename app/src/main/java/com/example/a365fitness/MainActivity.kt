@@ -403,19 +403,3 @@ fun MealItem(
         }
     }
 }
-
-@Composable
-fun MindfulnessScreen(modifier: Modifier = Modifier) {
-    Column(
-        modifier
-            .padding(16.dp)
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Mindfulness Timer", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = { /* start timer */ }) {
-            Text("Start 5-Minute Session")
-        }
-    }
-}
