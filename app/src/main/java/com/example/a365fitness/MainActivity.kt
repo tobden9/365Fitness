@@ -1,14 +1,19 @@
 package com.example.a365fitness
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
@@ -17,23 +22,49 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.a365fitness.ui.theme._365FitnessTheme
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Locale
 
+// --- 1. Data Classes ---
+
+data class Workout(
+    val exercise: String,
+    val duration: String,
+    val intensity: String
+)
+
+data class Meal(
+    val mealType: String,
+    val description: String,
+    val calories: String
+)
+
+data class MeditationSession(
+    val type: String,
+    val duration: String,
+    val date: String
+)
+
+// --- 2. MainActivity ---
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             _365FitnessTheme {
-                // New state to manage the login status
                 var isLoggedIn by remember { mutableStateOf(false) }
 
                 if (isLoggedIn) {
                     MainAppContent(
-                        onLogout = { isLoggedIn = false } // Optional: for a future logout button
+                        onLogout = { isLoggedIn = false }
                     )
                 } else {
                     LoginScreen(
@@ -45,9 +76,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Encapsulates the main application UI (Scaffold, BottomBar, Screens)
- */
+// --- 3. Main Navigation ---
+
 @Composable
 fun MainAppContent(onLogout: () -> Unit) {
     val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
@@ -67,7 +97,6 @@ fun MainAppContent(onLogout: () -> Unit) {
             }
         }
     ) { innerPadding ->
-        // Use a Box to place the content within the padding
         Box(modifier = Modifier.padding(innerPadding)) {
             when (tabs[selectedTab]) {
                 "Dashboard" -> DashboardScreen()
@@ -79,11 +108,8 @@ fun MainAppContent(onLogout: () -> Unit) {
     }
 }
 
-// --- New Login Screen Composable ---
+// --- 4. Login Screen ---
 
-/**
- * A basic, placeholder Login Screen.
- */
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit) {
     var username by remember { mutableStateOf("") }
@@ -128,11 +154,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Login Button
             Button(
                 onClick = {
-                    // In a real app, you would validate credentials here (e.g., API call)
-                    // For this example, any non-blank fields will "log in" successfully.
                     if (isLoginEnabled) {
                         onLoginSuccess()
                     }
@@ -147,7 +170,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Placeholder for "Forgot Password" or "Sign Up"
             TextButton(onClick = { /* Handle Sign Up/Forgot Password */ }) {
                 Text("Don't have an account? Sign Up")
             }
@@ -155,7 +177,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     }
 }
 
-// --- Existing Screen Composables (Adjusted to remove unused modifier.padding) ---
+// --- 5. Dashboard Screen ---
 
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
@@ -178,37 +200,30 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// Data class to represent a workout
-data class Workout(
-    val exercise: String,
-    val duration: String,
-    val intensity: String
-)
+// --- 6. Fitness Screen ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FitnessScreen(modifier: Modifier = Modifier) {
-    var workouts by remember { mutableStateOf(listOf(
-        Workout("Running", "30 mins", "Moderate"),
-        Workout("Lifting", "45 mins", "High") // Added examples for testing
-    )) }
+    val context = LocalContext.current
+    var workouts by remember { mutableStateOf(loadWorkoutHistory(context)) }
 
     var showAddWorkoutDialog by remember { mutableStateOf(false) }
     var newExercise by remember { mutableStateOf("") }
     var newDuration by remember { mutableStateOf("") }
     var newIntensity by remember { mutableStateOf("Moderate") }
 
-    // Function to delete a workout
     val deleteWorkout: (Workout) -> Unit = { workoutToDelete ->
-        workouts = workouts.filter { it != workoutToDelete }
+        val updatedWorkouts = workouts.filter { it != workoutToDelete }
+        workouts = updatedWorkouts
+        saveWorkoutHistory(context, updatedWorkouts)
     }
 
     Column(modifier.padding(16.dp)) {
         Text("Workout Log", style = MaterialTheme.typography.headlineSmall)
 
-        // Display workout list with a Delete button
         LazyColumn(
-            modifier = Modifier.weight(1f) // Gives LazyColumn room to scroll
+            modifier = Modifier.weight(1f)
         ) {
             items(workouts) { workout ->
                 Card(
@@ -216,28 +231,25 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                 ) {
-                    // Use Row to align text details and the delete button horizontally
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Details Column takes up most of the space
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Exercise: ${workout.exercise}")
                             Text("Duration: ${workout.duration}")
                             Text("Intensity: ${workout.intensity}")
                         }
 
-                        // Delete Button (IconButton)
                         IconButton(
                             onClick = { deleteWorkout(workout) }
                         ) {
                             Icon(
                                 Icons.Filled.Delete,
                                 contentDescription = "Delete Workout",
-                                tint = MaterialTheme.colorScheme.error // Red color for delete
+                                tint = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -247,7 +259,6 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Add workout button (KEPT)
         Button(
             onClick = { showAddWorkoutDialog = true },
             modifier = Modifier.fillMaxWidth()
@@ -256,7 +267,6 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    // Add Workout Dialog (KEPT)
     if (showAddWorkoutDialog) {
         AlertDialog(
             onDismissRequest = { showAddWorkoutDialog = false },
@@ -292,7 +302,7 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
                             label = { Text("Intensity") },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(), // The correct Material 3 API is used here
+                                .menuAnchor(),
                             readOnly = true
                         )
 
@@ -318,7 +328,10 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
                     onClick = {
                         if (newExercise.isNotBlank() && newDuration.isNotBlank()) {
                             val newWorkout = Workout(newExercise, newDuration, newIntensity)
-                            workouts = workouts + newWorkout
+                            val updatedWorkouts = workouts + newWorkout
+                            workouts = updatedWorkouts
+                            saveWorkoutHistory(context, updatedWorkouts)
+
                             newExercise = ""
                             newDuration = ""
                             newIntensity = "Moderate"
@@ -345,32 +358,27 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
     }
 }
 
+// --- 7. Nutrition Screen ---
+
 @Composable
 fun NutritionScreen(modifier: Modifier = Modifier) {
-    var meals by remember {
-        mutableStateOf(
-            listOf(
-                Meal("Breakfast", "Oats with fruits", "300 cal"),
-                Meal("Lunch", "Salad with chicken", "450 cal"),
-                Meal("Dinner", "Grilled fish with vegetables", "500 cal")
-            )
-        )
-    }
+    val context = LocalContext.current
+    var meals by remember { mutableStateOf(loadMealHistory(context)) }
 
     var showAddMealDialog by remember { mutableStateOf(false) }
     var newMealType by remember { mutableStateOf("") }
     var newMealDescription by remember { mutableStateOf("") }
     var newCalories by remember { mutableStateOf("") }
 
-    // Function to delete a meal
     val deleteMeal: (Meal) -> Unit = { mealToDelete ->
-        meals = meals.filter { it != mealToDelete }
+        val updatedMeals = meals.filter { it != mealToDelete }
+        meals = updatedMeals
+        saveMealHistory(context, updatedMeals)
     }
 
     Column(modifier.padding(16.dp)) {
         Text("Meal Log", style = MaterialTheme.typography.headlineSmall)
 
-        // Display meal list with delete buttons
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(
                 items = meals,
@@ -385,7 +393,6 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Add meal button
         Button(
             onClick = { showAddMealDialog = true },
             modifier = Modifier.fillMaxWidth()
@@ -394,7 +401,6 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    // Add Meal Dialog
     if (showAddMealDialog) {
         AlertDialog(
             onDismissRequest = { showAddMealDialog = false },
@@ -432,7 +438,10 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
                     onClick = {
                         if (newMealType.isNotBlank() && newMealDescription.isNotBlank() && newCalories.isNotBlank()) {
                             val newMeal = Meal(newMealType, newMealDescription, newCalories)
-                            meals = meals + newMeal
+                            val updatedMeals = meals + newMeal
+                            meals = updatedMeals
+                            saveMealHistory(context, updatedMeals)
+
                             newMealType = ""
                             newMealDescription = ""
                             newCalories = ""
@@ -459,14 +468,6 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// Data class for meals
-data class Meal(
-    val mealType: String,
-    val description: String,
-    val calories: String
-)
-
-// Simple meal item with delete button
 @Composable
 fun MealItem(
     meal: Meal,
@@ -490,7 +491,6 @@ fun MealItem(
                 Text(text = "Calories: ${meal.calories}")
             }
 
-            // Delete button
             IconButton(
                 onClick = onDelete
             ) {
@@ -502,4 +502,382 @@ fun MealItem(
             }
         }
     }
+}
+
+// --- 8. Mindfulness Screen ---
+
+@Composable
+fun MindfulnessScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    var selectedDuration by remember { mutableStateOf(5) }
+    var timerRunning by remember { mutableStateOf(false) }
+    var timeRemaining by remember { mutableStateOf(selectedDuration * 60L) }
+    var selectedMeditationType by remember { mutableStateOf("Breathing") }
+
+    var meditationHistory by remember {
+        mutableStateOf(loadMeditationHistory(context))
+    }
+
+    val currentDate = remember {
+        SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(java.util.Date())
+    }
+
+    val currentTime = remember {
+        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(java.util.Date())
+    }
+
+    val meditationTypes = listOf("Breathing", "Body Scan", "Loving-Kindness", "Visualization")
+
+    fun saveMeditationSession() {
+        val completedSeconds = (selectedDuration * 60L) - timeRemaining
+        val completedMinutes = (completedSeconds / 60).toInt()
+
+        if (completedMinutes > 0) {
+            val newSession = MeditationSession(
+                selectedMeditationType,
+                "$completedMinutes",
+                "Today, ${SimpleDateFormat("hh:mm a", Locale.getDefault()).format(java.util.Date())}"
+            )
+            val newHistory = listOf(newSession) + meditationHistory
+            meditationHistory = newHistory
+            saveMeditationHistory(context, newHistory)
+        }
+    }
+
+    LaunchedEffect(timerRunning) {
+        if (timerRunning) {
+            while (timeRemaining > 0 && timerRunning) {
+                delay(1000L)
+                timeRemaining--
+            }
+            if (timeRemaining == 0L) {
+                timerRunning = false
+                saveMeditationSession()
+            }
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .padding(16.dp)
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+    ) {
+        // Header
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = currentDate,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = currentTime,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            }
+        }
+
+        // Meditation Type
+        Text(
+            text = "Meditation Type",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        LazyRow(
+            modifier = Modifier.padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(meditationTypes) { type ->
+                FilterChip(
+                    selected = selectedMeditationType == type,
+                    onClick = { selectedMeditationType = type },
+                    label = { Text(type) }
+                )
+            }
+        }
+
+        // Timer Display
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Remaining Time",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = formatTime(timeRemaining),
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LinearProgressIndicator(
+                    progress = if (selectedDuration > 0) {
+                        1f - (timeRemaining.toFloat() / (selectedDuration * 60f))
+                    } else 0f,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                )
+
+                val completedMinutesDisplay = selectedDuration - (timeRemaining / 60)
+                Text(
+                    text = "Completed: ${if (completedMinutesDisplay > 0) completedMinutesDisplay else 0} min",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+
+        // Duration Selection
+        Text(
+            text = "Session Duration",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        LazyRow(
+            modifier = Modifier.padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(listOf(1, 5, 10, 15, 20, 30)) { minutes ->
+                AssistChip(
+                    onClick = {
+                        if (!timerRunning) {
+                            selectedDuration = minutes
+                            timeRemaining = minutes * 60L
+                        }
+                    },
+                    label = { Text("$minutes min") }
+                )
+            }
+        }
+
+        // Timer Controls
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = { timerRunning = !timerRunning },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (timerRunning) "Pause" else "Start")
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        if (timerRunning || timeRemaining < selectedDuration * 60L) {
+                            saveMeditationSession()
+                        }
+                        timerRunning = false
+                        timeRemaining = selectedDuration * 60L
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Reset")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (timerRunning) {
+                Button(
+                    onClick = {
+                        timerRunning = false
+                        saveMeditationSession()
+                        timeRemaining = selectedDuration * 60L
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Stop & Save")
+                }
+            }
+        }
+
+        // Meditation History
+        if (meditationHistory.isNotEmpty()) {
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                Text(
+                    text = "Recent Sessions",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Use standard Column + forEach when parent is scrollable
+                Column {
+                    meditationHistory.forEach { session ->
+                        MeditationHistoryItem(session = session)
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "No meditation sessions yet",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "Start your first session above!",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MeditationHistoryItem(session: MeditationSession) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = session.duration,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "min",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = session.type,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = session.date,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+
+// --- 9. Persistence and Utility Functions ---
+
+private object PersistenceKeys {
+    const val PREFS_NAME = "FitnessAppPrefs"
+    const val WORKOUT_HISTORY_KEY = "WorkoutHistory"
+    const val MEAL_HISTORY_KEY = "MealHistory"
+    const val MINDFULNESS_HISTORY_KEY = "MindfulnessHistory" // Combined key
+}
+
+private fun getPrefs(context: Context): SharedPreferences {
+    return context.getSharedPreferences(PersistenceKeys.PREFS_NAME, Context.MODE_PRIVATE)
+}
+
+// Time formatting for MindfulnessScreen
+private fun formatTime(seconds: Long): String {
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return String.format("%02d:%02d", minutes, remainingSeconds)
+}
+
+// --- Workout Persistence ---
+
+private fun loadWorkoutHistory(context: Context): List<Workout> {
+    val json = getPrefs(context).getString(PersistenceKeys.WORKOUT_HISTORY_KEY, null)
+    return if (json != null) {
+        val type = object : TypeToken<List<Workout>>() {}.type
+        Gson().fromJson(json, type)
+    } else {
+        listOf(Workout("Running", "30 mins", "Moderate"), Workout("Lifting", "45 mins", "High"))
+    }
+}
+
+private fun saveWorkoutHistory(context: Context, history: List<Workout>) {
+    val json = Gson().toJson(history)
+    getPrefs(context).edit().putString(PersistenceKeys.WORKOUT_HISTORY_KEY, json).apply()
+}
+
+// --- Meal Persistence ---
+
+private fun loadMealHistory(context: Context): List<Meal> {
+    val json = getPrefs(context).getString(PersistenceKeys.MEAL_HISTORY_KEY, null)
+    return if (json != null) {
+        val type = object : TypeToken<List<Meal>>() {}.type
+        Gson().fromJson(json, type)
+    } else {
+        listOf(Meal("Breakfast", "Oats with fruits", "300 cal"), Meal("Lunch", "Salad with chicken", "450 cal"), Meal("Dinner", "Grilled fish with vegetables", "500 cal"))
+    }
+}
+
+private fun saveMealHistory(context: Context, history: List<Meal>) {
+    val json = Gson().toJson(history)
+    getPrefs(context).edit().putString(PersistenceKeys.MEAL_HISTORY_KEY, json).apply()
+}
+
+// --- Meditation Persistence ---
+
+private fun loadMeditationHistory(context: Context): List<MeditationSession> {
+    val json = getPrefs(context).getString(PersistenceKeys.MINDFULNESS_HISTORY_KEY, null)
+    return if (json != null) {
+        val type = object : TypeToken<List<MeditationSession>>() {}.type
+        Gson().fromJson(json, type)
+    } else {
+        listOf(MeditationSession("Breathing", "5", "Today, 09:30 AM"), MeditationSession("Body Scan", "10", "Yesterday, 08:15 PM"))
+    }
+}
+
+private fun saveMeditationHistory(context: Context, history: List<MeditationSession>) {
+    val json = Gson().toJson(history)
+    getPrefs(context).edit().putString(PersistenceKeys.MINDFULNESS_HISTORY_KEY, json).apply()
 }
