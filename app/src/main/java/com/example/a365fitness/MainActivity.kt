@@ -1,6 +1,5 @@
 package com.example.a365fitness
 
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.a365fitness.ui.theme._365FitnessTheme
 
@@ -28,34 +28,134 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             _365FitnessTheme {
-                val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
-                var selectedTab by remember { mutableStateOf(0) }
+                // New state to manage the login status
+                var isLoggedIn by remember { mutableStateOf(false) }
 
-                Scaffold(
-                    bottomBar = {
-                        NavigationBar {
-                            tabs.forEachIndexed { index, title ->
-                                NavigationBarItem(
-                                    selected = selectedTab == index,
-                                    onClick = { selectedTab = index },
-                                    label = { Text(title) },
-                                    icon = { Icon(Icons.Default.Favorite, contentDescription = title) }
-                                )
-                            }
-                        }
-                    }
-                ) { innerPadding ->
-                    when (tabs[selectedTab]) {
-                        "Dashboard" -> DashboardScreen(Modifier.padding(innerPadding))
-                        "Fitness" -> FitnessScreen(Modifier.padding(innerPadding))
-                        "Nutrition" -> NutritionScreen(Modifier.padding(innerPadding))
-                        "Mindfulness" -> MindfulnessScreen(Modifier.padding(innerPadding))
-                    }
+                if (isLoggedIn) {
+                    MainAppContent(
+                        onLogout = { isLoggedIn = false } // Optional: for a future logout button
+                    )
+                } else {
+                    LoginScreen(
+                        onLoginSuccess = { isLoggedIn = true }
+                    )
                 }
             }
         }
     }
 }
+
+/**
+ * Encapsulates the main application UI (Scaffold, BottomBar, Screens)
+ */
+@Composable
+fun MainAppContent(onLogout: () -> Unit) {
+    val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
+    var selectedTab by remember { mutableStateOf(0) }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                tabs.forEachIndexed { index, title ->
+                    NavigationBarItem(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        label = { Text(title) },
+                        icon = { Icon(Icons.Default.Favorite, contentDescription = title) }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        // Use a Box to place the content within the padding
+        Box(modifier = Modifier.padding(innerPadding)) {
+            when (tabs[selectedTab]) {
+                "Dashboard" -> DashboardScreen()
+                "Fitness" -> FitnessScreen()
+                "Nutrition" -> NutritionScreen()
+                "Mindfulness" -> MindfulnessScreen()
+            }
+        }
+    }
+}
+
+// --- New Login Screen Composable ---
+
+/**
+ * A basic, placeholder Login Screen.
+ */
+@Composable
+fun LoginScreen(onLoginSuccess: () -> Unit) {
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val isLoginEnabled = username.isNotBlank() && password.isNotBlank()
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Welcome to 365Fitness",
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(bottom = 48.dp)
+            )
+
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Username or Email") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Login Button
+            Button(
+                onClick = {
+                    // In a real app, you would validate credentials here (e.g., API call)
+                    // For this example, any non-blank fields will "log in" successfully.
+                    if (isLoginEnabled) {
+                        onLoginSuccess()
+                    }
+                },
+                enabled = isLoginEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+            ) {
+                Text("Login")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Placeholder for "Forgot Password" or "Sign Up"
+            TextButton(onClick = { /* Handle Sign Up/Forgot Password */ }) {
+                Text("Don't have an account? Sign Up")
+            }
+        }
+    }
+}
+
+// --- Existing Screen Composables (Adjusted to remove unused modifier.padding) ---
 
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
@@ -271,7 +371,7 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
         Text("Meal Log", style = MaterialTheme.typography.headlineSmall)
 
         // Display meal list with delete buttons
-        LazyColumn {
+        LazyColumn(modifier = Modifier.weight(1f)) {
             items(
                 items = meals,
                 key = { meal -> "${meal.mealType}-${meal.description}-${meal.calories}" }
