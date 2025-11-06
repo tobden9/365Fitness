@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,7 +61,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             _365FitnessTheme {
-                var isLoggedIn by remember { mutableStateOf(false) }
+                // Using rememberSaveable to persist login state across rotation
+                var isLoggedIn by rememberSaveable { mutableStateOf(false) }
 
                 if (isLoggedIn) {
                     MainAppContent(
@@ -81,7 +83,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppContent(onLogout: () -> Unit) {
     val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
-    var selectedTab by remember { mutableStateOf(0) }
+    // Using rememberSaveable to persist the selected tab across rotation
+    var selectedTab by rememberSaveable { mutableStateOf(0) }
 
     Scaffold(
         bottomBar = {
@@ -112,8 +115,9 @@ fun MainAppContent(onLogout: () -> Unit) {
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit) {
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    // Using rememberSaveable to persist login form data during rotation
+    var username by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank()
 
     Surface(
@@ -208,10 +212,11 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var workouts by remember { mutableStateOf(loadWorkoutHistory(context)) }
 
-    var showAddWorkoutDialog by remember { mutableStateOf(false) }
-    var newExercise by remember { mutableStateOf("") }
-    var newDuration by remember { mutableStateOf("") }
-    var newIntensity by remember { mutableStateOf("Moderate") }
+    // Using rememberSaveable for dialog and form states
+    var showAddWorkoutDialog by rememberSaveable { mutableStateOf(false) }
+    var newExercise by rememberSaveable { mutableStateOf("") }
+    var newDuration by rememberSaveable { mutableStateOf("") }
+    var newIntensity by rememberSaveable { mutableStateOf("Moderate") }
 
     val deleteWorkout: (Workout) -> Unit = { workoutToDelete ->
         val updatedWorkouts = workouts.filter { it != workoutToDelete }
@@ -365,10 +370,11 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var meals by remember { mutableStateOf(loadMealHistory(context)) }
 
-    var showAddMealDialog by remember { mutableStateOf(false) }
-    var newMealType by remember { mutableStateOf("") }
-    var newMealDescription by remember { mutableStateOf("") }
-    var newCalories by remember { mutableStateOf("") }
+    // Using rememberSaveable for dialog and form states
+    var showAddMealDialog by rememberSaveable { mutableStateOf(false) }
+    var newMealType by rememberSaveable { mutableStateOf("") }
+    var newMealDescription by rememberSaveable { mutableStateOf("") }
+    var newCalories by rememberSaveable { mutableStateOf("") }
 
     val deleteMeal: (Meal) -> Unit = { mealToDelete ->
         val updatedMeals = meals.filter { it != mealToDelete }
@@ -511,10 +517,11 @@ fun MindfulnessScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    var selectedDuration by remember { mutableStateOf(5) }
-    var timerRunning by remember { mutableStateOf(false) }
-    var timeRemaining by remember { mutableStateOf(selectedDuration * 60L) }
-    var selectedMeditationType by remember { mutableStateOf("Breathing") }
+    // Using rememberSaveable to persist timer state across rotation
+    var selectedDuration by rememberSaveable { mutableStateOf(5) }
+    var timerRunning by rememberSaveable { mutableStateOf(false) }
+    var timeRemaining by rememberSaveable { mutableStateOf(selectedDuration * 60L) }
+    var selectedMeditationType by rememberSaveable { mutableStateOf("Breathing") }
 
     var meditationHistory by remember {
         mutableStateOf(loadMeditationHistory(context))
@@ -546,7 +553,7 @@ fun MindfulnessScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    LaunchedEffect(timerRunning) {
+    LaunchedEffect(timerRunning, timeRemaining) {
         if (timerRunning) {
             while (timeRemaining > 0 && timerRunning) {
                 delay(1000L)
@@ -732,7 +739,6 @@ fun MindfulnessScreen(modifier: Modifier = Modifier) {
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Use standard Column + forEach when parent is scrollable
                 Column {
                     meditationHistory.forEach { session ->
                         MeditationHistoryItem(session = session)
@@ -817,14 +823,13 @@ private object PersistenceKeys {
     const val PREFS_NAME = "FitnessAppPrefs"
     const val WORKOUT_HISTORY_KEY = "WorkoutHistory"
     const val MEAL_HISTORY_KEY = "MealHistory"
-    const val MINDFULNESS_HISTORY_KEY = "MindfulnessHistory" // Combined key
+    const val MINDFULNESS_HISTORY_KEY = "MindfulnessHistory"
 }
 
 private fun getPrefs(context: Context): SharedPreferences {
     return context.getSharedPreferences(PersistenceKeys.PREFS_NAME, Context.MODE_PRIVATE)
 }
 
-// Time formatting for MindfulnessScreen
 private fun formatTime(seconds: Long): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
