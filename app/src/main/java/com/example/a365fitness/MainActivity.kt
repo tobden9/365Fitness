@@ -3,6 +3,7 @@ package com.example.a365fitness
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.widget.Toast // <-- IMPORT ADDED
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.*
@@ -115,7 +116,7 @@ fun MainAppContent(onLogout: () -> Unit) {
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit) {
-    // Using rememberSaveable to persist login form data during rotation
+    val context = LocalContext.current // Get context for Toast
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank()
@@ -161,6 +162,8 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Button(
                 onClick = {
                     if (isLoginEnabled) {
+                        // --- TOAST ADDED ---
+                        Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
                         onLoginSuccess()
                     }
                 },
@@ -222,6 +225,8 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
         val updatedWorkouts = workouts.filter { it != workoutToDelete }
         workouts = updatedWorkouts
         saveWorkoutHistory(context, updatedWorkouts)
+        // --- TOAST ADDED ---
+        Toast.makeText(context, "Workout Deleted", Toast.LENGTH_SHORT).show()
     }
 
     Column(modifier.padding(16.dp)) {
@@ -337,10 +342,16 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
                             workouts = updatedWorkouts
                             saveWorkoutHistory(context, updatedWorkouts)
 
+                            // --- TOAST ADDED ---
+                            Toast.makeText(context, "Workout Added!", Toast.LENGTH_SHORT).show()
+
                             newExercise = ""
                             newDuration = ""
                             newIntensity = "Moderate"
                             showAddWorkoutDialog = false
+                        } else {
+                            // --- VALIDATION TOAST ADDED ---
+                            Toast.makeText(context, "Please fill out all fields", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
@@ -380,6 +391,8 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
         val updatedMeals = meals.filter { it != mealToDelete }
         meals = updatedMeals
         saveMealHistory(context, updatedMeals)
+        // --- TOAST ADDED ---
+        Toast.makeText(context, "Meal Deleted", Toast.LENGTH_SHORT).show()
     }
 
     Column(modifier.padding(16.dp)) {
@@ -448,10 +461,16 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
                             meals = updatedMeals
                             saveMealHistory(context, updatedMeals)
 
+                            // --- TOAST ADDED ---
+                            Toast.makeText(context, "Meal Added!", Toast.LENGTH_SHORT).show()
+
                             newMealType = ""
                             newMealDescription = ""
                             newCalories = ""
                             showAddMealDialog = false
+                        } else {
+                            // --- VALIDATION TOAST ADDED ---
+                            Toast.makeText(context, "Please fill out all fields", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) {
@@ -550,6 +569,12 @@ fun MindfulnessScreen(modifier: Modifier = Modifier) {
             val newHistory = listOf(newSession) + meditationHistory
             meditationHistory = newHistory
             saveMeditationHistory(context, newHistory)
+
+            // --- TOAST ADDED ---
+            Toast.makeText(context, "Session Saved!", Toast.LENGTH_SHORT).show()
+        } else {
+            // --- VALIDATION TOAST ADDED ---
+            Toast.makeText(context, "Session not long enough to save", Toast.LENGTH_SHORT).show()
         }
     }
 
