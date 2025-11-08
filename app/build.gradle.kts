@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -39,6 +40,8 @@ android {
     }
 }
 
+val room_version = "2.7.0"
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -56,6 +59,22 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    //viewmodel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
+
+    implementation("androidx.compose.material:material-icons-extended")
     //new
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.google.code.gson:gson:2.13.2")
+
+    // Room
+    implementation("androidx.room:room-runtime:$room_version")
+
+    // To use Kotlin Symbol Processing (KSP)
+    ksp("androidx.room:room-compiler:$room_version")
+
+    // Optional - Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:$room_version")
+
+    //
 }

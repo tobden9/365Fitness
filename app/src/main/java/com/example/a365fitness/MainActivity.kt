@@ -1,12 +1,10 @@
 package com.example.a365fitness
 
-import android.content.Context
-import android.content.SharedPreferences
+import android.app.Application // <-- ADDED
 import android.os.Bundle
-import android.widget.Toast // <-- IMPORT ADDED
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,41 +26,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel // <-- ADDED
 import com.example.a365fitness.ui.theme._365FitnessTheme
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+
+// --- ALL DATABASE IMPORTS ---
+import com.example.a365fitness.database.database.Meal
+import com.example.a365fitness.database.database.MeditationSession
+import com.example.a365fitness.database.database.Workout
+import com.example.a365fitness.ui.viewmodel.FitnessViewModel
+import com.example.a365fitness.ui.viewmodel.FitnessViewModelFactory
+
+// --- ALL LOCAL DATA CLASSES AND SHARED PREFS ARE GONE ---
+
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-// --- 1. Data Classes ---
 
-data class Workout(
-    val exercise: String,
-    val duration: String,
-    val intensity: String
-)
-
-data class Meal(
-    val mealType: String,
-    val description: String,
-    val calories: String
-)
-
-data class MeditationSession(
-    val type: String,
-    val duration: String,
-    val date: String
-)
-
-// --- 2. MainActivity ---
+// --- 1. MainActivity ---
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             _365FitnessTheme {
-                // Using rememberSaveable to persist login state across rotation
                 var isLoggedIn by rememberSaveable { mutableStateOf(false) }
 
                 if (isLoggedIn) {
@@ -79,13 +66,19 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// --- 3. Main Navigation ---
+// --- 2. Main Navigation ---
 
 @Composable
 fun MainAppContent(onLogout: () -> Unit) {
     val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
-    // Using rememberSaveable to persist the selected tab across rotation
     var selectedTab by rememberSaveable { mutableStateOf(0) }
+
+    // --- VIEWMODEL INITIALIZATION ---
+    // Get the Application context to create the factory
+    val context = LocalContext.current
+    val factory = FitnessViewModelFactory(context.applicationContext as Application)
+    // Initialize the ViewModel. It will be shared across all screens.
+    val viewModel: FitnessViewModel = viewModel(factory = factory)
 
     Scaffold(
         bottomBar = {
@@ -95,7 +88,7 @@ fun MainAppContent(onLogout: () -> Unit) {
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         label = { Text(title) },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = title) }
+                        icon = { Icon(Icons.Default.Favorite, contentDescription = title) } // Using a default icon
                     )
                 }
             }
@@ -104,19 +97,20 @@ fun MainAppContent(onLogout: () -> Unit) {
         Box(modifier = Modifier.padding(innerPadding)) {
             when (tabs[selectedTab]) {
                 "Dashboard" -> DashboardScreen()
-                "Fitness" -> FitnessScreen()
-                "Nutrition" -> NutritionScreen()
-                "Mindfulness" -> MindfulnessScreen()
+                // Pass the *same* ViewModel to each screen
+                "Fitness" -> FitnessScreen(viewModel = viewModel)
+                "Nutrition" -> NutritionScreen(viewModel = viewModel)
+                "Mindfulness" -> MindfulnessScreen(viewModel = viewModel)
             }
         }
     }
 }
 
-// --- 4. Login Screen ---
+// --- 3. Login Screen ---
 
 @Composable
 fun LoginScreen(onLoginSuccess: () -> Unit) {
-    val context = LocalContext.current // Get context for Toast
+    val context = LocalContext.current
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank()
@@ -162,7 +156,6 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             Button(
                 onClick = {
                     if (isLoginEnabled) {
-                        // --- TOAST ADDED ---
                         Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
                         onLoginSuccess()
                     }
@@ -207,27 +200,19 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// --- 6. Fitness Screen ---
+// --- 6. Fitness Screen (REFACTORED) ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FitnessScreen(modifier: Modifier = Modifier) {
+fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var workouts by remember { mutableStateOf(loadWorkoutHistory(context)) }
+    // --- Get workout list from ViewModel ---
+    val workouts by viewModel.allWorkouts.collectAsState()
 
-    // Using rememberSaveable for dialog and form states
     var showAddWorkoutDialog by rememberSaveable { mutableStateOf(false) }
     var newExercise by rememberSaveable { mutableStateOf("") }
     var newDuration by rememberSaveable { mutableStateOf("") }
     var newIntensity by rememberSaveable { mutableStateOf("Moderate") }
-
-    val deleteWorkout: (Workout) -> Unit = { workoutToDelete ->
-        val updatedWorkouts = workouts.filter { it != workoutToDelete }
-        workouts = updatedWorkouts
-        saveWorkoutHistory(context, updatedWorkouts)
-        // --- TOAST ADDED ---
-        Toast.makeText(context, "Workout Deleted", Toast.LENGTH_SHORT).show()
-    }
 
     Column(modifier.padding(16.dp)) {
         Text("Workout Log", style = MaterialTheme.typography.headlineSmall)
@@ -235,7 +220,7 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = Modifier.weight(1f)
         ) {
-            items(workouts) { workout ->
+            items(items = workouts, key = { it.id }) { workout ->
                 Card(
                     Modifier
                         .fillMaxWidth()
@@ -254,7 +239,11 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
                         }
 
                         IconButton(
-                            onClick = { deleteWorkout(workout) }
+                            onClick = {
+                                // --- Use ViewModel to delete ---
+                                viewModel.deleteWorkout(workout)
+                                Toast.makeText(context, "Workout Deleted", Toast.LENGTH_SHORT).show()
+                            }
                         ) {
                             Icon(
                                 Icons.Filled.Delete,
@@ -337,20 +326,15 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         if (newExercise.isNotBlank() && newDuration.isNotBlank()) {
-                            val newWorkout = Workout(newExercise, newDuration, newIntensity)
-                            val updatedWorkouts = workouts + newWorkout
-                            workouts = updatedWorkouts
-                            saveWorkoutHistory(context, updatedWorkouts)
+                            // --- Use ViewModel to add ---
+                            viewModel.addWorkout(newExercise, newDuration, newIntensity)
 
-                            // --- TOAST ADDED ---
                             Toast.makeText(context, "Workout Added!", Toast.LENGTH_SHORT).show()
-
                             newExercise = ""
                             newDuration = ""
                             newIntensity = "Moderate"
                             showAddWorkoutDialog = false
                         } else {
-                            // --- VALIDATION TOAST ADDED ---
                             Toast.makeText(context, "Please fill out all fields", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -374,38 +358,31 @@ fun FitnessScreen(modifier: Modifier = Modifier) {
     }
 }
 
-// --- 7. Nutrition Screen ---
+// --- 7. Nutrition Screen (REFACTORED) ---
 
 @Composable
-fun NutritionScreen(modifier: Modifier = Modifier) {
+fun NutritionScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    var meals by remember { mutableStateOf(loadMealHistory(context)) }
+    // --- Get meal list from ViewModel ---
+    val meals by viewModel.allMeals.collectAsState()
 
-    // Using rememberSaveable for dialog and form states
     var showAddMealDialog by rememberSaveable { mutableStateOf(false) }
     var newMealType by rememberSaveable { mutableStateOf("") }
     var newMealDescription by rememberSaveable { mutableStateOf("") }
     var newCalories by rememberSaveable { mutableStateOf("") }
 
-    val deleteMeal: (Meal) -> Unit = { mealToDelete ->
-        val updatedMeals = meals.filter { it != mealToDelete }
-        meals = updatedMeals
-        saveMealHistory(context, updatedMeals)
-        // --- TOAST ADDED ---
-        Toast.makeText(context, "Meal Deleted", Toast.LENGTH_SHORT).show()
-    }
-
     Column(modifier.padding(16.dp)) {
         Text("Meal Log", style = MaterialTheme.typography.headlineSmall)
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            items(
-                items = meals,
-                key = { meal -> "${meal.mealType}-${meal.description}-${meal.calories}" }
-            ) { meal ->
+            items(items = meals, key = { it.id }) { meal ->
                 MealItem(
                     meal = meal,
-                    onDelete = { deleteMeal(meal) }
+                    onDelete = {
+                        // --- Use ViewModel to delete ---
+                        viewModel.deleteMeal(meal)
+                        Toast.makeText(context, "Meal Deleted", Toast.LENGTH_SHORT).show()
+                    }
                 )
             }
         }
@@ -432,18 +409,14 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
                         label = { Text("Meal Type (e.g., Breakfast, Lunch)") },
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     Spacer(modifier = Modifier.height(8.dp))
-
                     OutlinedTextField(
                         value = newMealDescription,
                         onValueChange = { newMealDescription = it },
                         label = { Text("Meal Description") },
                         modifier = Modifier.fillMaxWidth()
                     )
-
                     Spacer(modifier = Modifier.height(8.dp))
-
                     OutlinedTextField(
                         value = newCalories,
                         onValueChange = { newCalories = it },
@@ -456,20 +429,15 @@ fun NutritionScreen(modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         if (newMealType.isNotBlank() && newMealDescription.isNotBlank() && newCalories.isNotBlank()) {
-                            val newMeal = Meal(newMealType, newMealDescription, newCalories)
-                            val updatedMeals = meals + newMeal
-                            meals = updatedMeals
-                            saveMealHistory(context, updatedMeals)
+                            // --- Use ViewModel to add ---
+                            viewModel.addMeal(newMealType, newMealDescription, newCalories)
 
-                            // --- TOAST ADDED ---
                             Toast.makeText(context, "Meal Added!", Toast.LENGTH_SHORT).show()
-
                             newMealType = ""
                             newMealDescription = ""
                             newCalories = ""
                             showAddMealDialog = false
                         } else {
-                            // --- VALIDATION TOAST ADDED ---
                             Toast.makeText(context, "Please fill out all fields", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -529,22 +497,20 @@ fun MealItem(
     }
 }
 
-// --- 8. Mindfulness Screen ---
+// --- 8. Mindfulness Screen (REFACTORED) ---
 
 @Composable
-fun MindfulnessScreen(modifier: Modifier = Modifier) {
+fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // Using rememberSaveable to persist timer state across rotation
+    // --- Get history from ViewModel ---
+    val meditationHistory by viewModel.allMeditations.collectAsState()
+
     var selectedDuration by rememberSaveable { mutableStateOf(5) }
     var timerRunning by rememberSaveable { mutableStateOf(false) }
     var timeRemaining by rememberSaveable { mutableStateOf(selectedDuration * 60L) }
     var selectedMeditationType by rememberSaveable { mutableStateOf("Breathing") }
-
-    var meditationHistory by remember {
-        mutableStateOf(loadMeditationHistory(context))
-    }
 
     val currentDate = remember {
         SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(java.util.Date())
@@ -561,19 +527,12 @@ fun MindfulnessScreen(modifier: Modifier = Modifier) {
         val completedMinutes = (completedSeconds / 60).toInt()
 
         if (completedMinutes > 0) {
-            val newSession = MeditationSession(
-                selectedMeditationType,
-                "$completedMinutes",
-                "Today, ${SimpleDateFormat("hh:mm a", Locale.getDefault()).format(java.util.Date())}"
-            )
-            val newHistory = listOf(newSession) + meditationHistory
-            meditationHistory = newHistory
-            saveMeditationHistory(context, newHistory)
+            val dateString = "Today, ${SimpleDateFormat("hh:mm a", Locale.getDefault()).format(java.util.Date())}"
+            // --- Use ViewModel to add ---
+            viewModel.addMeditation(selectedMeditationType, "$completedMinutes", dateString)
 
-            // --- TOAST ADDED ---
             Toast.makeText(context, "Session Saved!", Toast.LENGTH_SHORT).show()
         } else {
-            // --- VALIDATION TOAST ADDED ---
             Toast.makeText(context, "Session not long enough to save", Toast.LENGTH_SHORT).show()
         }
     }
@@ -842,72 +801,13 @@ fun MeditationHistoryItem(session: MeditationSession) {
 }
 
 
-// --- 9. Persistence and Utility Functions ---
+// --- 9. Utility Functions ---
 
-private object PersistenceKeys {
-    const val PREFS_NAME = "FitnessAppPrefs"
-    const val WORKOUT_HISTORY_KEY = "WorkoutHistory"
-    const val MEAL_HISTORY_KEY = "MealHistory"
-    const val MINDFULNESS_HISTORY_KEY = "MindfulnessHistory"
-}
-
-private fun getPrefs(context: Context): SharedPreferences {
-    return context.getSharedPreferences(PersistenceKeys.PREFS_NAME, Context.MODE_PRIVATE)
-}
+// All SharedPreferences functions are removed.
+// We only keep the time formatter.
 
 private fun formatTime(seconds: Long): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
     return String.format("%02d:%02d", minutes, remainingSeconds)
-}
-
-// --- Workout Persistence ---
-
-private fun loadWorkoutHistory(context: Context): List<Workout> {
-    val json = getPrefs(context).getString(PersistenceKeys.WORKOUT_HISTORY_KEY, null)
-    return if (json != null) {
-        val type = object : TypeToken<List<Workout>>() {}.type
-        Gson().fromJson(json, type)
-    } else {
-        listOf(Workout("Running", "30 mins", "Moderate"), Workout("Lifting", "45 mins", "High"))
-    }
-}
-
-private fun saveWorkoutHistory(context: Context, history: List<Workout>) {
-    val json = Gson().toJson(history)
-    getPrefs(context).edit().putString(PersistenceKeys.WORKOUT_HISTORY_KEY, json).apply()
-}
-
-// --- Meal Persistence ---
-
-private fun loadMealHistory(context: Context): List<Meal> {
-    val json = getPrefs(context).getString(PersistenceKeys.MEAL_HISTORY_KEY, null)
-    return if (json != null) {
-        val type = object : TypeToken<List<Meal>>() {}.type
-        Gson().fromJson(json, type)
-    } else {
-        listOf(Meal("Breakfast", "Oats with fruits", "300 cal"), Meal("Lunch", "Salad with chicken", "450 cal"), Meal("Dinner", "Grilled fish with vegetables", "500 cal"))
-    }
-}
-
-private fun saveMealHistory(context: Context, history: List<Meal>) {
-    val json = Gson().toJson(history)
-    getPrefs(context).edit().putString(PersistenceKeys.MEAL_HISTORY_KEY, json).apply()
-}
-
-// --- Meditation Persistence ---
-
-private fun loadMeditationHistory(context: Context): List<MeditationSession> {
-    val json = getPrefs(context).getString(PersistenceKeys.MINDFULNESS_HISTORY_KEY, null)
-    return if (json != null) {
-        val type = object : TypeToken<List<MeditationSession>>() {}.type
-        Gson().fromJson(json, type)
-    } else {
-        listOf(MeditationSession("Breathing", "5", "Today, 09:30 AM"), MeditationSession("Body Scan", "10", "Yesterday, 08:15 PM"))
-    }
-}
-
-private fun saveMeditationHistory(context: Context, history: List<MeditationSession>) {
-    val json = Gson().toJson(history)
-    getPrefs(context).edit().putString(PersistenceKeys.MINDFULNESS_HISTORY_KEY, json).apply()
 }
