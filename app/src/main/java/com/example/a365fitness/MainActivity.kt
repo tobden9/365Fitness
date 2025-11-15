@@ -1,5 +1,6 @@
 package com.example.a365fitness
 
+import android.annotation.SuppressLint
 import android.app.Application // <-- ADDED
 import android.os.Bundle
 import android.widget.Toast
@@ -32,7 +33,6 @@ import com.example.a365fitness.ui.theme._365FitnessTheme
 // --- ALL DATABASE IMPORTS ---
 import com.example.a365fitness.database.database.Meal
 import com.example.a365fitness.database.database.MeditationSession
-import com.example.a365fitness.database.database.Workout
 import com.example.a365fitness.ui.viewmodel.FitnessViewModel
 import com.example.a365fitness.ui.viewmodel.FitnessViewModelFactory
 
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainAppContent(onLogout: () -> Unit) {
     val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
-    var selectedTab by rememberSaveable { mutableStateOf(0) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     // --- VIEWMODEL INITIALIZATION ---
     // Get the Application context to create the factory
@@ -192,7 +192,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             Column(Modifier.padding(16.dp)) {
                 Text("Steps: 7,230 / 10,000")
                 LinearProgressIndicator(
-                    progress = 0.72f,
+                    progress = {0.72f},
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -507,9 +507,9 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
     // --- Get history from ViewModel ---
     val meditationHistory by viewModel.allMeditations.collectAsState()
 
-    var selectedDuration by rememberSaveable { mutableStateOf(5) }
+    var selectedDuration by rememberSaveable { mutableIntStateOf(5) }
     var timerRunning by rememberSaveable { mutableStateOf(false) }
-    var timeRemaining by rememberSaveable { mutableStateOf(selectedDuration * 60L) }
+    var timeRemaining by rememberSaveable { mutableLongStateOf(selectedDuration * 60L) }
     var selectedMeditationType by rememberSaveable { mutableStateOf("Breathing") }
 
     val currentDate = remember {
@@ -624,9 +624,9 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LinearProgressIndicator(
-                    progress = if (selectedDuration > 0) {
+                    progress = {if (selectedDuration > 0) {
                         1f - (timeRemaining.toFloat() / (selectedDuration * 60f))
-                    } else 0f,
+                    } else 0f},
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
@@ -806,6 +806,7 @@ fun MeditationHistoryItem(session: MeditationSession) {
 // All SharedPreferences functions are removed.
 // We only keep the time formatter.
 
+@SuppressLint("DefaultLocale")
 private fun formatTime(seconds: Long): String {
     val minutes = seconds / 60
     val remainingSeconds = seconds % 60
