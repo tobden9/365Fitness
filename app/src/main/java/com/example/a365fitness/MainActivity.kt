@@ -15,8 +15,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,6 +49,7 @@ import com.example.a365fitness.ui.viewmodel.FitnessViewModelFactory
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Locale
+
 
 
 // --- 1. MainActivity ---
@@ -84,11 +93,24 @@ fun MainAppContent(onLogout: () -> Unit) {
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { index, title ->
+                    // Check if this item is currently selected
+                    val isSelected = selectedTab == index
+
                     NavigationBarItem(
-                        selected = selectedTab == index,
+                        selected = isSelected,
                         onClick = { selectedTab = index },
                         label = { Text(title) },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = title) } // Using a default icon
+                        icon = {
+                            // Determine which icon to show based on selection state
+                            val icon = when (title) {
+                                "Dashboard" -> if (isSelected) Icons.Filled.Dashboard else Icons.Outlined.Dashboard
+                                "Fitness" -> if (isSelected) Icons.Filled.FitnessCenter else Icons.Outlined.FitnessCenter
+                                "Nutrition" -> if (isSelected) Icons.Filled.Restaurant else Icons.Outlined.Restaurant
+                                "Mindfulness" -> if (isSelected) Icons.Filled.SelfImprovement else Icons.Outlined.SelfImprovement
+                                else -> Icons.Default.Favorite // Fallback
+                            }
+                            Icon(icon, contentDescription = title)
+                        }
                     )
                 }
             }
