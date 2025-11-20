@@ -1,14 +1,14 @@
-package com.example.a365fitness.ui.viewmodel
+package com.tobden.a365fitness.ui.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.a365fitness.database.database.FitnessApplication
-import com.example.a365fitness.database.database.FitnessRepository
-import com.example.a365fitness.database.database.Meal
-import com.example.a365fitness.database.database.MeditationSession
-import com.example.a365fitness.database.database.Workout
+import com.tobden.a365fitness.database.database.FitnessApplication
+import com.tobden.a365fitness.database.database.FitnessRepository
+import com.tobden.a365fitness.database.database.Meal
+import com.tobden.a365fitness.database.database.MeditationSession
+import com.tobden.a365fitness.database.database.Workout
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn

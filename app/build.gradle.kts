@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.a365fitness"
+    namespace = "com.tobden.a365fitness"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.a365fitness"
+        applicationId = "com.tobden.a365fitness"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -69,12 +69,17 @@ dependencies {
 
     // Room
     implementation("androidx.room:room-runtime:$room_version")
-
-    // To use Kotlin Symbol Processing (KSP)
     ksp("androidx.room:room-compiler:$room_version")
-
-    // Optional - Kotlin Extensions and Coroutines support for Room
     implementation("androidx.room:room-ktx:$room_version")
 
-    //
+    // --- REQUIRED INSTRUMENTED TEST DEPENDENCIES ---
+
+    // 1. Room Testing utilities (in-memory database)
+    androidTestImplementation("androidx.room:room-testing:$room_version")
+
+    // 2. Coroutines Testing utilities (runTest, Flow.first())
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // 3. AndroidX Test Core
+    androidTestImplementation("androidx.test:core:1.6.1")
 }

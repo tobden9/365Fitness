@@ -1,4 +1,4 @@
-package com.example.a365fitness.database.database
+package com.tobden.a365fitness.database.database
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

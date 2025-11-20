@@ -1,4 +1,4 @@
-package com.example.a365fitness.ui.theme
+package com.tobden.a365fitness.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

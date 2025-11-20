@@ -1,4 +1,4 @@
-package com.example.a365fitness
+package com.tobden.a365fitness
 
 import android.annotation.SuppressLint
 import android.app.Application // <-- ADDED
@@ -36,13 +36,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel // <-- ADDED
-import com.example.a365fitness.ui.theme._365FitnessTheme
+import com.tobden.a365fitness.ui.theme._365FitnessTheme
 
 // --- ALL DATABASE IMPORTS ---
-import com.example.a365fitness.database.database.Meal
-import com.example.a365fitness.database.database.MeditationSession
-import com.example.a365fitness.ui.viewmodel.FitnessViewModel
-import com.example.a365fitness.ui.viewmodel.FitnessViewModelFactory
+import com.tobden.a365fitness.database.database.Meal
+import com.tobden.a365fitness.database.database.MeditationSession
+import com.tobden.a365fitness.ui.viewmodel.FitnessViewModel
+import com.tobden.a365fitness.ui.viewmodel.FitnessViewModelFactory
 
 // --- ALL LOCAL DATA CLASSES AND SHARED PREFS ARE GONE ---
 

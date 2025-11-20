@@ -1,4 +1,4 @@
-package com.example.a365fitness
+package com.tobden.a365fitness
 
 import org.junit.Test
 
