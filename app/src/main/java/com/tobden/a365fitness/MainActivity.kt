@@ -233,21 +233,7 @@ fun LoginScreen(
             Button(
                 onClick = {
                     if (isLoginEnabled) {
-                        // Play sound effect
-                        val mediaPlayer = MediaPlayer.create(context, R.raw.intro)
-                        if (mediaPlayer != null) {
-                            mediaPlayer.start()
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                try {
-                                    if (mediaPlayer.isPlaying) {
-                                        mediaPlayer.stop()
-                                    }
-                                    mediaPlayer.release()
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
-                                }
-                            }, 5000)
-                        }
+                        // REMOVED SOUND FROM HERE so it doesn't play on every click
 
                         if (isSignUpMode) {
                             // Handle Sign Up
@@ -266,6 +252,24 @@ fun LoginScreen(
                             // Handle Login
                             viewModel.loginUser(username, password) { success ->
                                 if (success == "Success") {
+                                    // --- MOVED SOUND HERE ---
+                                    // Only plays if login is actually successful
+                                    val mediaPlayer = MediaPlayer.create(context, R.raw.intro)
+                                    if (mediaPlayer != null) {
+                                        mediaPlayer.start()
+                                        Handler(Looper.getMainLooper()).postDelayed({
+                                            try {
+                                                if (mediaPlayer.isPlaying) {
+                                                    mediaPlayer.stop()
+                                                }
+                                                mediaPlayer.release()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                        }, 5000)
+                                    }
+                                    // ------------------------
+
                                     Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
                                     onLoginSuccess(username)
                                 } else {
