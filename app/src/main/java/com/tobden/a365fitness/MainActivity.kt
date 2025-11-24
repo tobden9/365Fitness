@@ -56,6 +56,10 @@ import java.util.Locale
 
 import androidx.compose.ui.graphics.Brush
 
+// Sound imports
+import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 
 // Define the gradient based on your logo
 val LogoGradient = Brush.verticalGradient(
@@ -218,19 +222,49 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             // 4. Login Button (White button with Teal text for contrast)
             Button(
                 onClick = {
+                    // The check is here, but the 'enabled' property below is what makes the UI look correct
                     if (isLoginEnabled) {
+                        // 1. PLAY THE SOUND
+                        // Use 'intro' to match your file: res/raw/intro.mp3
+                        val mediaPlayer = MediaPlayer.create(context, R.raw.intro)
+
+                        // Null check to prevent crashes if file is missing/corrupted
+                        if (mediaPlayer != null) {
+                            mediaPlayer.start()
+
+                            // 2. SCHEDULE STOP AFTER 5 SECONDS
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                try {
+                                    if (mediaPlayer.isPlaying) {
+                                        mediaPlayer.stop()
+                                    }
+                                    mediaPlayer.release()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }, 5000)
+                        }
+
+                        // 3. PROCEED TO LOGIN
                         Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
                         onLoginSuccess()
                     }
                 },
+                // --- RESTORED FEATURE: Disable button if fields are empty ---
                 enabled = isLoginEnabled,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF009688) // Teal text
-                ),
+                // ------------------------------------------------------------
+
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .height(50.dp),
+
+                // Keep your design (White button on Gradient background)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF009688),
+                    disabledContainerColor = Color.White.copy(alpha = 0.5f),
+                    disabledContentColor = Color(0xFF009688).copy(alpha = 0.5f)
+                )
             ) {
                 Text("Login", fontWeight = FontWeight.Bold)
             }
