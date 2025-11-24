@@ -50,7 +50,15 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+import androidx.compose.ui.graphics.Brush
 
+// Define the gradient based on your logo
+val LogoGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFF009688), // Teal
+        Color(0xFF03A9F4)  // Blue/Cyan
+    )
+)
 
 // --- 1. MainActivity ---
 
@@ -100,6 +108,11 @@ fun MainAppContent(onLogout: () -> Unit) {
                         selected = isSelected,
                         onClick = { selectedTab = index },
                         label = { Text(title) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color(0xFF009688), // Teal Icon
+                            selectedTextColor = Color(0xFF009688), // Teal Text
+                            indicatorColor = Color(0xFFE0F2F1)     // Very light teal background
+                        ),
                         icon = {
                             // Determine which icon to show based on selection state
                             val icon = when (title) {
@@ -137,9 +150,11 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     var password by rememberSaveable { mutableStateOf("") }
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank()
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    // 1. Use a Box with the Gradient Background
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(brush = LogoGradient) // <--- APPLY LOGO GRADIENT HERE
     ) {
         Column(
             modifier = Modifier
@@ -148,18 +163,31 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // 2. Logo / Title Text
             Text(
-                text = "Welcome to 365Fitness",
-                style = MaterialTheme.typography.headlineLarge,
+                text = "365Fitness",
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontWeight = FontWeight.Bold, // Match logo boldness
+                    color = Color.White           // Match logo text color
+                ),
                 modifier = Modifier.padding(bottom = 48.dp)
             )
 
+            // 3. Inputs with White styling
+            // We use specific colors for the text fields to look good on the gradient
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Username or Email") },
+                label = { Text("Username", color = Color.White) },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = Color.White
+                )
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -167,14 +195,22 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text("Password", color = Color.White) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                visualTransformation = PasswordVisualTransformation()
+                visualTransformation = PasswordVisualTransformation(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = Color.White
+                )
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // 4. Login Button (White button with Teal text for contrast)
             Button(
                 onClick = {
                     if (isLoginEnabled) {
@@ -183,17 +219,21 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     }
                 },
                 enabled = isLoginEnabled,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF009688) // Teal text
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
             ) {
-                Text("Login")
+                Text("Login", fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { /* Handle Sign Up/Forgot Password */ }) {
-                Text("Don't have an account? Sign Up")
+            TextButton(onClick = { /* Handle Sign Up */ }) {
+                Text("Don't have an account? Sign Up", color = Color.White)
             }
         }
     }
@@ -205,18 +245,33 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 fun DashboardScreen(modifier: Modifier = Modifier) {
     Column(modifier.padding(16.dp)) {
         Text("Today's Progress", style = MaterialTheme.typography.headlineSmall)
+        // Inside DashboardScreen ...
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Steps: 7,230 / 10,000")
-                LinearProgressIndicator(
-                    progress = {0.72f},
-                    modifier = Modifier.fillMaxWidth()
-                )
+            // We wrap the content in a Box to apply the Gradient Background
+            Box(
+                modifier = Modifier
+                    .background(LogoGradient) // <--- YOUR GRADIENT HERE
+                    .fillMaxWidth()
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Steps: 7,230 / 10,000",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White // White text looks best on gradient
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { 0.72f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White, // Solid white progress bar
+                        trackColor = Color.White.copy(alpha = 0.3f) // Semi-transparent white track
+                    )
+                }
             }
         }
     }
@@ -282,7 +337,12 @@ fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
 
         Button(
             onClick = { showAddWorkoutDialog = true },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            // Apply the specific Teal color from your logo
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF009688),
+                contentColor = Color.White
+            )
         ) {
             Text("Add New Workout")
         }
@@ -413,7 +473,12 @@ fun NutritionScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) 
 
         Button(
             onClick = { showAddMealDialog = true },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            // Apply the specific Teal color from your logo
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF009688),
+                contentColor = Color.White
+            )
         ) {
             Text("Add New Meal")
         }
@@ -646,12 +711,16 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LinearProgressIndicator(
-                    progress = {if (selectedDuration > 0) {
-                        1f - (timeRemaining.toFloat() / (selectedDuration * 60f))
-                    } else 0f},
+                    progress = {
+                        if (selectedDuration > 0) {
+                            1f - (timeRemaining.toFloat() / (selectedDuration * 60f))
+                        } else 0f
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
+                        .height(8.dp),
+                    color = Color(0xFF009688), // <--- Set to your Logo Teal
+                    trackColor = Color(0xFFB2DFDB) // <--- A lighter version for the track
                 )
 
                 val completedMinutesDisplay = selectedDuration - (timeRemaining / 60)
@@ -667,7 +736,8 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
         Text(
             text = "Session Duration",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
+            color = Color(0xFF009688) // <--- Set to your Logo Teal
         )
 
         LazyRow(
