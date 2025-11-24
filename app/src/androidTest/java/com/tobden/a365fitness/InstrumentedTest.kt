@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -131,5 +133,51 @@ class FitnessDatabaseTest {
 
         val allSessions = fitnessDao.getAllMeditationSessions().first()
         assertTrue(allSessions.isEmpty())
+    }
+
+    // --- 4. User Tests (Fixed) ---
+
+    @Test
+    @Throws(Exception::class)
+    fun registerAndGetUserSuccess() = runTest {
+        // Create a new user
+        val user = User(username = "TestUser1", password = "Password123")
+
+        // Register (Insert)
+        fitnessDao.insertUser(user)
+
+        // FIX: Use getUser with ONLY the username (as per your DAO error)
+        val retrievedUser = fitnessDao.getUser("TestUser1")
+
+        // Assert that we found the user
+        assertNotNull("User should be found", retrievedUser)
+        // Verify the password was saved correctly
+        assertEquals("Password123", retrievedUser?.password)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun getUserNotFound() = runTest {
+        // Test querying a user that doesn't exist
+        val nonExistentUser = fitnessDao.getUser("GhostUser")
+
+        // Assert that the result is null
+        assertNull("User should not be found", nonExistentUser)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun checkUsernameAlreadyExists() = runTest {
+        // Create user
+        val user = User(username = "ExistingUser", password = "123")
+        fitnessDao.insertUser(user)
+
+        // FIX: Use getUser instead of getUserByUsername
+        val existingUser = fitnessDao.getUser("ExistingUser")
+        val ghostUser = fitnessDao.getUser("GhostUser")
+
+        // Assert
+        assertNotNull("Should find existing username", existingUser)
+        assertNull("Should not find non-existing username", ghostUser)
     }
 }
