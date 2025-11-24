@@ -13,16 +13,20 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SelfImprovement
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.SelfImprovement
 import androidx.compose.material3.*
@@ -51,6 +55,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 import androidx.compose.ui.graphics.Brush
+
 
 // Define the gradient based on your logo
 val LogoGradient = Brush.verticalGradient(
@@ -243,39 +248,158 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier) {
-    Column(modifier.padding(16.dp)) {
-        Text("Today's Progress", style = MaterialTheme.typography.headlineSmall)
-        // Inside DashboardScreen ...
+    Column(
+        modifier = modifier
+            .padding(16.dp)
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()) // Make screen scrollable
+    ) {
+        // 1. Welcome Header
+        Text(
+            text = "Welcome Back!",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF009688) // Your Brand Teal
+        )
+        Text(
+            text = "Here is your daily summary.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. The "Hero" Gradient Card (Steps & Calories)
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            elevation = CardDefaults.cardElevation(4.dp)
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(8.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            // We wrap the content in a Box to apply the Gradient Background
             Box(
                 modifier = Modifier
-                    .background(LogoGradient) // <--- YOUR GRADIENT HERE
+                    .background(LogoGradient) // Your Brand Gradient
                     .fillMaxWidth()
+                    .padding(24.dp)
             ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Steps: 7,230 / 10,000",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White // White text looks best on gradient
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Left Side: Steps
+                    Column {
+                        Text("STEPS", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                        Text("7,230", color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                        Text("Goal: 10,000", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    // Vertical Divider
+                    Box(
+                        modifier = Modifier
+                            .height(50.dp)
+                            .width(1.dp)
+                            .background(Color.White.copy(alpha = 0.3f))
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { 0.72f },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.White, // Solid white progress bar
-                        trackColor = Color.White.copy(alpha = 0.3f) // Semi-transparent white track
+
+                    // Right Side: Calories
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("CALORIES", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                        Text("450", color = Color.White, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+                        Text("Kcal Burned", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 3. Quick Stats Grid (Water & Sleep)
+        Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Water Card
+            StatCard(
+                title = "Water",
+                value = "1.2 L",
+                icon = Icons.Outlined.LocalDrink, // Use generic drink/cafe icon if water not avail
+                tint = Color(0xFF03A9F4), // Cyan from your logo
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Sleep Card
+            StatCard(
+                title = "Sleep",
+                value = "7h 30m",
+                icon = Icons.Outlined.Bedtime, // Or Default.Night
+                tint = Color(0xFF673AB7), // A complementary purple
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 4. Motivation / Quote Section
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)), // Very light teal
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.EmojiEvents,
+                    contentDescription = "Trophy",
+                    tint = Color(0xFF009688)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = "Streak: 3 Days!",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00796B)
+                    )
+                    Text(
+                        text = "Keep it up, consistency is key!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF004D40)
                     )
                 }
             }
         }
     }
 }
+
+// --- Helper Component for the smaller cards ---
+@Composable
+fun StatCard(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Icon(imageVector = icon, contentDescription = title, tint = tint)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(text = title, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+    }
+}
+
 
 // --- 6. Fitness Screen (REFACTORED) ---
 
