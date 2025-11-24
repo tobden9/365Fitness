@@ -10,6 +10,13 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface FitnessDao {
 
+    // --- NEW: User Authentication Methods ---
+    @Insert(onConflict = OnConflictStrategy.ABORT) // Fails if username exists
+    suspend fun insertUser(user: User)
+
+    @Query("SELECT * FROM user_table WHERE username = :username LIMIT 1")
+    suspend fun getUser(username: String): User?
+
     // --- Workout Methods ---
     @Query("SELECT * FROM workout_table ORDER BY id DESC")
     fun getAllWorkouts(): Flow<List<Workout>>

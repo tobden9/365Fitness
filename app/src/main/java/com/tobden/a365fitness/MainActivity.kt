@@ -1,8 +1,12 @@
 package com.tobden.a365fitness
 
 import android.annotation.SuppressLint
-import android.app.Application // <-- ADDED
+import android.app.Application
+import android.content.Context
+import android.media.MediaPlayer
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,50 +20,30 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.outlined.Bedtime
-import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.LocalDrink
-import androidx.compose.material.icons.outlined.Restaurant
-import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel // <-- ADDED
-import com.tobden.a365fitness.ui.theme._365FitnessTheme
-
-// --- ALL DATABASE IMPORTS ---
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tobden.a365fitness.database.database.Meal
 import com.tobden.a365fitness.database.database.MeditationSession
+import com.tobden.a365fitness.database.database.User
+import com.tobden.a365fitness.ui.theme._365FitnessTheme
 import com.tobden.a365fitness.ui.viewmodel.FitnessViewModel
 import com.tobden.a365fitness.ui.viewmodel.FitnessViewModelFactory
-
-// --- ALL LOCAL DATA CLASSES AND SHARED PREFS ARE GONE ---
-
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Locale
-
-import androidx.compose.ui.graphics.Brush
-
-// Sound imports
-import android.media.MediaPlayer
-import android.os.Handler
-import android.os.Looper
 
 // Define the gradient based on your logo
 val LogoGradient = Brush.verticalGradient(
@@ -76,15 +60,41 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             _365FitnessTheme {
-                var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+                val context = LocalContext.current
+
+                // Initialize ViewModel
+                val factory = FitnessViewModelFactory(context.applicationContext as Application)
+                val viewModel: FitnessViewModel = viewModel(factory = factory)
+
+                // Persistent Login State
+                val sharedPref = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+                val savedLoginState = sharedPref.getBoolean("is_logged_in", false)
+                val savedUsername = sharedPref.getString("current_username", "") ?: ""
+
+                var isLoggedIn by rememberSaveable { mutableStateOf(savedLoginState) }
+                var currentUsername by rememberSaveable { mutableStateOf(savedUsername) }
+
+                @SuppressLint("UseKtx")
+                fun updateLoginState(loggedIn: Boolean, username: String = "") {
+                    isLoggedIn = loggedIn
+                    currentUsername = username
+                    with(sharedPref.edit()) {
+                        putBoolean("is_logged_in", loggedIn)
+                        putString("current_username", username)
+                        apply()
+                    }
+                }
 
                 if (isLoggedIn) {
                     MainAppContent(
-                        onLogout = { isLoggedIn = false }
+                        viewModel = viewModel,
+                        currentUsername = currentUsername,
+                        onLogout = { updateLoginState(false, "") }
                     )
                 } else {
                     LoginScreen(
-                        onLoginSuccess = { isLoggedIn = true }
+                        viewModel = viewModel,
+                        onLoginSuccess = { username -> updateLoginState(true, username) }
                     )
                 }
             }
@@ -95,16 +105,13 @@ class MainActivity : ComponentActivity() {
 // --- 2. Main Navigation ---
 
 @Composable
-fun MainAppContent(onLogout: () -> Unit) {
+fun MainAppContent(
+    viewModel: FitnessViewModel,
+    currentUsername: String,
+    onLogout: () -> Unit
+) {
     val tabs = listOf("Dashboard", "Fitness", "Nutrition", "Mindfulness")
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-
-    // --- VIEWMODEL INITIALIZATION ---
-    // Get the Application context to create the factory
-    val context = LocalContext.current
-    val factory = FitnessViewModelFactory(context.applicationContext as Application)
-    // Initialize the ViewModel. It will be shared across all screens.
-    val viewModel: FitnessViewModel = viewModel(factory = factory)
 
     Scaffold(
         bottomBar = {
@@ -140,7 +147,7 @@ fun MainAppContent(onLogout: () -> Unit) {
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
             when (tabs[selectedTab]) {
-                "Dashboard" -> DashboardScreen()
+                "Dashboard" -> DashboardScreen(currentUsername = currentUsername, onLogout = onLogout)
                 // Pass the *same* ViewModel to each screen
                 "Fitness" -> FitnessScreen(viewModel = viewModel)
                 "Nutrition" -> NutritionScreen(viewModel = viewModel)
@@ -153,8 +160,12 @@ fun MainAppContent(onLogout: () -> Unit) {
 // --- 3. Login Screen ---
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    viewModel: FitnessViewModel,
+    onLoginSuccess: (String) -> Unit
+) {
     val context = LocalContext.current
+    var isSignUpMode by rememberSaveable { mutableStateOf(false) }
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank()
@@ -163,7 +174,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(brush = LogoGradient) // <--- APPLY LOGO GRADIENT HERE
+            .background(brush = LogoGradient)
     ) {
         Column(
             modifier = Modifier
@@ -174,16 +185,15 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
         ) {
             // 2. Logo / Title Text
             Text(
-                text = "365Fitness",
+                text = if (isSignUpMode) "Create Account" else "365Fitness",
                 style = MaterialTheme.typography.displayMedium.copy(
-                    fontWeight = FontWeight.Bold, // Match logo boldness
-                    color = Color.White           // Match logo text color
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 ),
                 modifier = Modifier.padding(bottom = 48.dp)
             )
 
             // 3. Inputs with White styling
-            // We use specific colors for the text fields to look good on the gradient
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
@@ -219,20 +229,14 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 4. Login Button (White button with Teal text for contrast)
+            // 4. Login/Sign Up Button
             Button(
                 onClick = {
-                    // The check is here, but the 'enabled' property below is what makes the UI look correct
                     if (isLoginEnabled) {
-                        // 1. PLAY THE SOUND
-                        // Use 'intro' to match your file: res/raw/intro.mp3
+                        // Play sound effect
                         val mediaPlayer = MediaPlayer.create(context, R.raw.intro)
-
-                        // Null check to prevent crashes if file is missing/corrupted
                         if (mediaPlayer != null) {
                             mediaPlayer.start()
-
-                            // 2. SCHEDULE STOP AFTER 5 SECONDS
                             Handler(Looper.getMainLooper()).postDelayed({
                                 try {
                                     if (mediaPlayer.isPlaying) {
@@ -245,20 +249,36 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                             }, 5000)
                         }
 
-                        // 3. PROCEED TO LOGIN
-                        Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
-                        onLoginSuccess()
+                        if (isSignUpMode) {
+                            // Handle Sign Up
+                            val newUser = User(username = username, password = password)
+                            viewModel.registerUser(newUser) { success ->
+                                if (success) {
+                                    Toast.makeText(context, "Account created successfully!", Toast.LENGTH_SHORT).show()
+                                    // Switch to login mode
+                                    isSignUpMode = false
+                                    password = "" // Clear password field
+                                } else {
+                                    Toast.makeText(context, "Username already exists!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            // Handle Login
+                            viewModel.loginUser(username, password) { success ->
+                                if (success == "Success") {
+                                    Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
+                                    onLoginSuccess(username)
+                                } else {
+                                    Toast.makeText(context, "Invalid username or password!", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
                     }
                 },
-                // --- RESTORED FEATURE: Disable button if fields are empty ---
                 enabled = isLoginEnabled,
-                // ------------------------------------------------------------
-
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-
-                // Keep your design (White button on Gradient background)
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
                     contentColor = Color(0xFF009688),
@@ -266,13 +286,20 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     disabledContentColor = Color(0xFF009688).copy(alpha = 0.5f)
                 )
             ) {
-                Text("Login", fontWeight = FontWeight.Bold)
+                Text(if (isSignUpMode) "Sign Up" else "Login", fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(onClick = { /* Handle Sign Up */ }) {
-                Text("Don't have an account? Sign Up", color = Color.White)
+            TextButton(onClick = {
+                isSignUpMode = !isSignUpMode
+                username = ""
+                password = ""
+            }) {
+                Text(
+                    if (isSignUpMode) "Already have an account? Login" else "Don't have an account? Sign Up",
+                    color = Color.White
+                )
             }
         }
     }
@@ -281,25 +308,36 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 // --- 5. Dashboard Screen ---
 
 @Composable
-fun DashboardScreen(modifier: Modifier = Modifier) {
+fun DashboardScreen(currentUsername: String, onLogout: () -> Unit, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .padding(16.dp)
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()) // Make screen scrollable
+            .verticalScroll(rememberScrollState())
     ) {
-        // 1. Welcome Header
-        Text(
-            text = "Welcome Back!",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF009688) // Your Brand Teal
-        )
-        Text(
-            text = "Here is your daily summary.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
+        // 1. Welcome Header with Logout
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Welcome Back, $currentUsername!",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF009688)
+                )
+                Text(
+                    text = "Here is your daily summary.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+            IconButton(onClick = onLogout) {
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout", tint = Color.Gray)
+            }
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -311,7 +349,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
         ) {
             Box(
                 modifier = Modifier
-                    .background(LogoGradient) // Your Brand Gradient
+                    .background(LogoGradient)
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
@@ -356,8 +394,8 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             StatCard(
                 title = "Water",
                 value = "1.2 L",
-                icon = Icons.Outlined.LocalDrink, // Use generic drink/cafe icon if water not avail
-                tint = Color(0xFF03A9F4), // Cyan from your logo
+                icon = Icons.Outlined.LocalDrink,
+                tint = Color(0xFF03A9F4),
                 modifier = Modifier.weight(1f)
             )
 
@@ -367,8 +405,8 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
             StatCard(
                 title = "Sleep",
                 value = "7h 30m",
-                icon = Icons.Outlined.Bedtime, // Or Default.Night
-                tint = Color(0xFF673AB7), // A complementary purple
+                icon = Icons.Outlined.Bedtime,
+                tint = Color(0xFF673AB7),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -377,7 +415,7 @@ fun DashboardScreen(modifier: Modifier = Modifier) {
 
         // 4. Motivation / Quote Section
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)), // Very light teal
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F2F1)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -434,14 +472,11 @@ fun StatCard(
     }
 }
 
-
-// --- 6. Fitness Screen (REFACTORED) ---
-
+// --- 6. Fitness Screen ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    // --- Get workout list from ViewModel ---
     val workouts by viewModel.allWorkouts.collectAsState()
 
     var showAddWorkoutDialog by rememberSaveable { mutableStateOf(false) }
@@ -475,7 +510,6 @@ fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
 
                         IconButton(
                             onClick = {
-                                // --- Use ViewModel to delete ---
                                 viewModel.deleteWorkout(workout)
                                 Toast.makeText(context, "Workout Deleted", Toast.LENGTH_SHORT).show()
                             }
@@ -496,7 +530,6 @@ fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
         Button(
             onClick = { showAddWorkoutDialog = true },
             modifier = Modifier.fillMaxWidth(),
-            // Apply the specific Teal color from your logo
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF009688),
                 contentColor = Color.White
@@ -566,9 +599,7 @@ fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
                 Button(
                     onClick = {
                         if (newExercise.isNotBlank() && newDuration.isNotBlank()) {
-                            // --- Use ViewModel to add ---
                             viewModel.addWorkout(newExercise, newDuration, newIntensity)
-
                             Toast.makeText(context, "Workout Added!", Toast.LENGTH_SHORT).show()
                             newExercise = ""
                             newDuration = ""
@@ -598,12 +629,10 @@ fun FitnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     }
 }
 
-// --- 7. Nutrition Screen (REFACTORED) ---
-
+// --- 7. Nutrition Screen ---
 @Composable
 fun NutritionScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    // --- Get meal list from ViewModel ---
     val meals by viewModel.allMeals.collectAsState()
 
     var showAddMealDialog by rememberSaveable { mutableStateOf(false) }
@@ -619,7 +648,6 @@ fun NutritionScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) 
                 MealItem(
                     meal = meal,
                     onDelete = {
-                        // --- Use ViewModel to delete ---
                         viewModel.deleteMeal(meal)
                         Toast.makeText(context, "Meal Deleted", Toast.LENGTH_SHORT).show()
                     }
@@ -632,7 +660,6 @@ fun NutritionScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) 
         Button(
             onClick = { showAddMealDialog = true },
             modifier = Modifier.fillMaxWidth(),
-            // Apply the specific Teal color from your logo
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF009688),
                 contentColor = Color.White
@@ -674,9 +701,7 @@ fun NutritionScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) 
                 Button(
                     onClick = {
                         if (newMealType.isNotBlank() && newMealDescription.isNotBlank() && newCalories.isNotBlank()) {
-                            // --- Use ViewModel to add ---
                             viewModel.addMeal(newMealType, newMealDescription, newCalories)
-
                             Toast.makeText(context, "Meal Added!", Toast.LENGTH_SHORT).show()
                             newMealType = ""
                             newMealDescription = ""
@@ -742,14 +767,12 @@ fun MealItem(
     }
 }
 
-// --- 8. Mindfulness Screen (REFACTORED) ---
-
+// --- 8. Mindfulness Screen ---
 @Composable
 fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    // --- Get history from ViewModel ---
     val meditationHistory by viewModel.allMeditations.collectAsState()
 
     var selectedDuration by rememberSaveable { mutableIntStateOf(5) }
@@ -773,9 +796,7 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
 
         if (completedMinutes > 0) {
             val dateString = "Today, ${SimpleDateFormat("hh:mm a", Locale.getDefault()).format(java.util.Date())}"
-            // --- Use ViewModel to add ---
             viewModel.addMeditation(selectedMeditationType, "$completedMinutes", dateString)
-
             Toast.makeText(context, "Session Saved!", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(context, "Session not long enough to save", Toast.LENGTH_SHORT).show()
@@ -877,8 +898,8 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp),
-                    color = Color(0xFF009688), // <--- Set to your Logo Teal
-                    trackColor = Color(0xFFB2DFDB) // <--- A lighter version for the track
+                    color = Color(0xFF009688),
+                    trackColor = Color(0xFFB2DFDB)
                 )
 
                 val completedMinutesDisplay = selectedDuration - (timeRemaining / 60)
@@ -895,7 +916,7 @@ fun MindfulnessScreen(viewModel: FitnessViewModel, modifier: Modifier = Modifier
             text = "Session Duration",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 8.dp),
-            color = Color(0xFF009688) // <--- Set to your Logo Teal
+            color = Color(0xFF009688)
         )
 
         LazyRow(
@@ -1050,12 +1071,7 @@ fun MeditationHistoryItem(session: MeditationSession) {
     }
 }
 
-
 // --- 9. Utility Functions ---
-
-// All SharedPreferences functions are removed.
-// We only keep the time formatter.
-
 @SuppressLint("DefaultLocale")
 private fun formatTime(seconds: Long): String {
     val minutes = seconds / 60

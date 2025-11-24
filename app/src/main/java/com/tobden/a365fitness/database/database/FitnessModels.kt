@@ -33,3 +33,13 @@ data class MeditationSession(
     val duration: String,
     val date: String
 )
+
+// --- NEW USER TABLE ---
+@Entity(tableName = "user_table")
+data class User(
+    @PrimaryKey
+    @ColumnInfo(name = "username")
+    val username: String, // Username is the unique ID
+    @ColumnInfo(name = "password")
+    val password: String
+)

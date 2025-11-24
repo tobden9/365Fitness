@@ -3,6 +3,14 @@ package com.tobden.a365fitness.database.database
 import kotlinx.coroutines.flow.Flow
 
 class FitnessRepository(private val fitnessDao: FitnessDao) {
+    // --- NEW: User Auth ---
+    suspend fun getUserByUsername(username: String): User? {
+        return fitnessDao.getUser(username)
+    }
+
+    suspend fun registerUser(user: User) {
+        fitnessDao.insertUser(user)
+    }
 
     // --- Workout ---
     val allWorkouts: Flow<List<Workout>> = fitnessDao.getAllWorkouts()

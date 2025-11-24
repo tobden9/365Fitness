@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [Workout::class, Meal::class, MeditationSession::class],
-    version = 1,
+    entities = [Workout::class, Meal::class, MeditationSession::class, User::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -24,7 +24,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "fitness_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration(true) // <--- ADD THIS to handle the update
+                    .build()
                 INSTANCE = instance
                 instance
             }
