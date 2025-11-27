@@ -81,5 +81,12 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 
     // 3. AndroidX Test Core
-    androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test:core:1.7.0")
+
+    //Unit Test
+    testImplementation(libs.junit)
+    testImplementation("org.mockito:mockito-core:5.20.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0") // Try this version
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+
 }
